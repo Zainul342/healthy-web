@@ -1607,14 +1607,21 @@ h1, h2, h3, h4, h5, h6 {
   }
   .main-content {
     margin-left: 0;
-    padding: 1.25rem;
+    padding: 0.75rem; /* Reduced from 1.25rem for more screen area */
     padding-bottom: 100px; /* Offset for floating mobile navigation bar */
+  }
+  .card {
+    padding: 1.25rem 0.85rem; /* Reduced margins inside cards on mobile */
+  }
+  .form-input, .btn, button, select, input {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS Safari on focus and improves readability */
   }
   .top-header {
     height: auto;
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
+    padding: 0.5rem 0.25rem;
   }
   .header-right {
     width: 100%;
