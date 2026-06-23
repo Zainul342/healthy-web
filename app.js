@@ -87,7 +87,7 @@ const PRESET_MEALS = {
 };
 
 // --- WORKOUT SPLIT DETAILS (5-Day Active, 2-Day Recovery) ---
-const WORKOUT_SPLIT = {
+let WORKOUT_SPLIT = {
   1: {
     title: 'Strength - Pull & Push',
     desc: 'Fokus pada kekuatan dasar Front Lever dan Dips dengan tambahan kardio HIIT',
@@ -342,6 +342,7 @@ let strengthChart = null;
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
   loadDataFromLocalStorage();
+  updateCalendarLabels();
   setupEventListeners();
   switchTab(appState.activeTab);
   renderWorkoutDay(appState.activeWorkoutDay);
@@ -384,6 +385,31 @@ function loadDataFromLocalStorage() {
       console.error("Error loading localStorage state:", e);
     }
   }
+
+  // Load custom workout split if present
+  const savedWorkoutSplit = localStorage.getItem('fittrack_custom_workout_split');
+  if (savedWorkoutSplit) {
+    try {
+      WORKOUT_SPLIT = JSON.parse(savedWorkoutSplit);
+    } catch (e) {
+      console.error("Error loading custom workout split:", e);
+    }
+  }
+}
+
+function updateCalendarLabels() {
+  document.querySelectorAll('.calendar-day-btn').forEach(btn => {
+    const day = parseInt(btn.getAttribute('data-day'));
+    const workout = WORKOUT_SPLIT[day];
+    if (workout) {
+      const nameSpan = btn.querySelector('.day-name');
+      if (nameSpan) {
+        let shortTitle = workout.title.split(' - ')[0];
+        if (shortTitle.length > 12) shortTitle = shortTitle.slice(0, 10) + '..';
+        nameSpan.textContent = shortTitle;
+      }
+    }
+  });
 }
 
 function saveToLocalStorage() {
@@ -1433,8 +1459,11 @@ function renderWorkoutDay(dayIndex) {
   const stopwatchSuggest = document.getElementById('stopwatch-suggestion-box');
   stopwatchSuggest.style.display = 'none';
 
-  // Specific forms depending on exercises (using set logger for strength/holds)
-  if (dayIndex === 1) { // Pull/Push
+  const isCustomActive = !!localStorage.getItem('fittrack_custom_workout_split');
+
+  if (isCustomActive) {
+    fieldsContainer.innerHTML = generateDynamicWorkoutInputs(workout);
+  } else if (dayIndex === 1) { // Pull/Push
     fieldsContainer.innerHTML = `
       ${generateSetLoggerHTML('Tuck Front Lever Hold', SETS_EXERCISES['Tuck Front Lever Hold'], 'tuckFLHold')}
       ${generateSetLoggerHTML('Dips', SETS_EXERCISES['Dips'], 'dipsMaxReps')}
@@ -1549,43 +1578,68 @@ function populateWorkoutTable() {
   };
 
   sortedLogs.forEach(log => {
-    const workoutDetails = WORKOUT_SPLIT[log.dayIndex];
     let detailString = '';
-    
-    // Construct readable text based on logged parameters
     const ex = log.exercises;
-    if (ex.tuckFLHold) {
-      const f = formatExVal(ex.tuckFLHold, 's');
-      if (f) detailString += `Tuck FL: ${f}. `;
+    
+    const isCustomActive = !!localStorage.getItem('fittrack_custom_workout_split');
+    
+    if (isCustomActive) {
+      Object.keys(ex).forEach(key => {
+        if (['runDistance', 'runTimeSeconds', 'runPaceMinutes', 'recoveryNotes', 'hiitStatus', 'recoveryRunDone'].includes(key)) {
+          return;
+        }
+        
+        let displayName = key;
+        const workout = WORKOUT_SPLIT[log.dayIndex];
+        if (workout) {
+          const matchingEx = workout.exercises.find(e => e.name.toLowerCase().replace(/[^a-zA-Z0-9]/g, '').slice(0, 15) === key);
+          if (matchingEx) displayName = matchingEx.name;
+        }
+        
+        const f = formatExVal(ex[key], '');
+        if (f) detailString += `${displayName}: ${f}. `;
+      });
+      
+      if (ex.runDistance) {
+        const minStr = Math.floor(ex.runTimeSeconds / 60);
+        const secStr = ex.runTimeSeconds % 60;
+        detailString += `Lari: ${ex.runDistance} KM (${minStr}m ${secStr}s), Pace: ${formatPace(ex.runPaceMinutes)}. `;
+      }
+      if (ex.recoveryNotes) detailString += `Pemulihan: ${ex.recoveryNotes === 'stretching-done' ? 'Stretching Aktif Selesai' : 'Istirahat Total'}. `;
+    } else {
+      if (ex.tuckFLHold) {
+        const f = formatExVal(ex.tuckFLHold, 's');
+        if (f) detailString += `Tuck FL: ${f}. `;
+      }
+      if (ex.dipsMaxReps) {
+        const f = formatExVal(ex.dipsMaxReps, 'reps');
+        if (f) detailString += `Dips: ${f}. `;
+      }
+      if (ex.runDistance) {
+        const minStr = Math.floor(ex.runTimeSeconds / 60);
+        const secStr = ex.runTimeSeconds % 60;
+        detailString += `Lari: ${ex.runDistance} KM (${minStr}m ${secStr}s), Pace: ${formatPace(ex.runPaceMinutes)}. `;
+      }
+      if (ex.plankHold) {
+        const f = formatExVal(ex.plankHold, 's');
+        if (f) detailString += `Plank: ${f}. `;
+      }
+      if (ex.scapulaHangs) {
+        const f = formatExVal(ex.scapulaHangs, 'reps');
+        if (f) detailString += `Scapula Hangs: ${f}. `;
+      }
+      if (ex.legRaises) {
+        const f = formatExVal(ex.legRaises, 'reps');
+        if (f) detailString += `Leg Raises: ${f}. `;
+      }
+      if (ex.hollowHold) {
+        const f = formatExVal(ex.hollowHold, 's');
+        if (f) detailString += `Hollow Hold: ${f}. `;
+      }
+      if (ex.recoveryNotes) detailString += `Pemulihan: ${ex.recoveryNotes === 'stretching-done' ? 'Stretching Aktif Selesai' : 'Istirahat Total'}. `;
+      if (ex.hiitStatus) detailString += `HIIT Sprint: ${ex.hiitStatus === 'yes' ? 'Selesai' : 'Tidak Selesai'}. `;
+      if (ex.recoveryRunDone) detailString += `Lari Recovery: ${ex.recoveryRunDone === 'yes' ? 'Selesai' : 'Tidak'}. `;
     }
-    if (ex.dipsMaxReps) {
-      const f = formatExVal(ex.dipsMaxReps, 'reps');
-      if (f) detailString += `Dips: ${f}. `;
-    }
-    if (ex.runDistance) {
-      const minStr = Math.floor(ex.runTimeSeconds / 60);
-      const secStr = ex.runTimeSeconds % 60;
-      detailString += `Lari: ${ex.runDistance} KM (${minStr}m ${secStr}s), Pace: ${formatPace(ex.runPaceMinutes)}. `;
-    }
-    if (ex.plankHold) {
-      const f = formatExVal(ex.plankHold, 's');
-      if (f) detailString += `Plank: ${f}. `;
-    }
-    if (ex.scapulaHangs) {
-      const f = formatExVal(ex.scapulaHangs, 'reps');
-      if (f) detailString += `Scapula Hangs: ${f}. `;
-    }
-    if (ex.legRaises) {
-      const f = formatExVal(ex.legRaises, 'reps');
-      if (f) detailString += `Leg Raises: ${f}. `;
-    }
-    if (ex.hollowHold) {
-      const f = formatExVal(ex.hollowHold, 's');
-      if (f) detailString += `Hollow Hold: ${f}. `;
-    }
-    if (ex.recoveryNotes) detailString += `Pemulihan: ${ex.recoveryNotes === 'stretching-done' ? 'Stretching Aktif Selesai' : 'Istirahat Total'}. `;
-    if (ex.hiitStatus) detailString += `HIIT Sprint: ${ex.hiitStatus === 'yes' ? 'Selesai' : 'Tidak Selesai'}. `;
-    if (ex.recoveryRunDone) detailString += `Lari Recovery: ${ex.recoveryRunDone === 'yes' ? 'Selesai' : 'Tidak'}. `;
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1635,8 +1689,9 @@ function handleTimerStartPause() {
         if (setInputs.length > 0) {
           let filled = false;
           for (let input of setInputs) {
-            const key = input.getAttribute('data-key');
-            if ((key === 'tuckFLHold' || key === 'plankHold' || key === 'hollowHold') && !input.value) {
+            const key = (input.getAttribute('data-key') || '').toLowerCase();
+            const isHoldKey = key.includes('hold') || key.includes('lever') || key.includes('plank') || key.includes('hangs') || key.includes('fl') || key === 'tuckflhold' || key === 'plankhold' || key === 'hollowhold';
+            if (isHoldKey && !input.value) {
               input.value = totalSeconds;
               filled = true;
               break;
@@ -1644,8 +1699,9 @@ function handleTimerStartPause() {
           }
           if (!filled) {
             for (let input of setInputs) {
-              const key = input.getAttribute('data-key');
-              if (key === 'tuckFLHold' || key === 'plankHold' || key === 'hollowHold') {
+              const key = (input.getAttribute('data-key') || '').toLowerCase();
+              const isHoldKey = key.includes('hold') || key.includes('lever') || key.includes('plank') || key.includes('hangs') || key.includes('fl') || key === 'tuckflhold' || key === 'plankhold' || key === 'hollowhold';
+              if (isHoldKey) {
                 input.value = totalSeconds;
                 break;
               }
@@ -1795,6 +1851,7 @@ function formatPace(decimalMinutes) {
 function resetAllApplicationData() {
   if (confirm("Apakah Anda yakin ingin menghapus semua profil, log makanan, dan log latihan? Tindakan ini tidak dapat dibatalkan.")) {
     localStorage.removeItem('fittrack_ai_state');
+    localStorage.removeItem('fittrack_custom_workout_split');
     appState = {
       activeTab: 'settings',
       profile: { gender: '', age: 0, weight: 0, height: 0, activityLevel: '', bmr: 0, tdee: 0, targetCalories: 0, targetProtein: 0, isSet: false },
@@ -2271,4 +2328,398 @@ function renderBadgesUI() {
     `;
     grid.appendChild(item);
   });
+}
+
+// --- DYNAMIC AI WORKOUT GENERATOR INPUTS WRAPPER ---
+function generateDynamicWorkoutInputs(workout) {
+  let html = '';
+  workout.exercises.forEach(ex => {
+    const isRunning = ex.name.toLowerCase().includes('lari') || 
+                      ex.name.toLowerCase().includes('run') || 
+                      ex.name.toLowerCase().includes('sprint') || 
+                      ex.name.toLowerCase().includes('jogging');
+    
+    if (isRunning) {
+      html += `
+        <div class="form-group">
+          <label for="input-run-distance" class="form-label">${ex.name} - Jarak (KM)</label>
+          <input type="number" id="input-run-distance" class="form-input" placeholder="Jarak (KM), misal: 4.2" step="0.01" min="0" required>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="input-run-min" class="form-label">Durasi (Menit)</label>
+            <input type="number" id="input-run-min" class="form-input" placeholder="Menit" min="0" required>
+          </div>
+          <div class="form-group">
+            <label for="input-run-sec" class="form-label">Durasi (Detik)</label>
+            <input type="number" id="input-run-sec" class="form-input" placeholder="Detik" min="0" max="59" required>
+          </div>
+        </div>
+      `;
+    } else {
+      const targetStr = ex.target || '';
+      const setsMatch = targetStr.match(/(\d+)\s*Set/i);
+      const sets = setsMatch ? parseInt(setsMatch[1]) : 4;
+      const isHold = targetStr.toLowerCase().includes('detik') || targetStr.toLowerCase().includes('hold') || ex.name.toLowerCase().includes('hold') || ex.name.toLowerCase().includes('lever') || ex.name.toLowerCase().includes('plank');
+      
+      const placeholder = isHold ? 'Detik' : 'Reps';
+      const keyPrefix = ex.name.toLowerCase().replace(/[^a-zA-Z0-9]/g, '').slice(0, 15);
+      
+      html += `
+        <div class="exercise-set-logger" data-exercise="${ex.name}">
+          <h4>${ex.name} (${sets} Set)</h4>
+          <div class="sets-table-header">
+            <span>Set</span>
+            <span class="text-center">${placeholder}</span>
+            <span class="text-center">Selesai</span>
+          </div>
+      `;
+      for (let s = 1; s <= sets; s++) {
+        html += `
+          <div class="set-row">
+            <span class="set-number-badge">${s}</span>
+            <div class="set-input-wrap">
+              <input type="number" class="form-input set-input" data-set="${s}" data-key="${keyPrefix}" placeholder="${placeholder}" min="0">
+            </div>
+            <div class="set-row-completed-chk">
+              <input type="checkbox" class="chk-box-custom set-checkbox" onchange="handleSetCompletion(this)">
+            </div>
+          </div>
+        `;
+      }
+      html += `</div>`;
+    }
+  });
+
+  if (workout.exercises.length === 0) {
+    html = `
+      <p class="text-secondary label-xs text-center">Hari pemulihan aktif. Tidak ada latihan berat.</p>
+      <div class="form-group mt-2">
+        <label for="input-recovery-notes" class="form-label">Catatan Pemulihan</label>
+        <select id="input-recovery-notes" class="form-input">
+          <option value="stretching-done">Selesai Peregangan / Stretching Aktif</option>
+          <option value="rest-only">Istirahat Total</option>
+        </select>
+      </div>
+    `;
+  }
+
+  return html;
+}
+
+// --- AI WORKOUT PLANNERS MODAL CONTROLS ---
+function openAIWorkoutModal() {
+  document.getElementById('ai-workout-modal').style.display = 'flex';
+}
+
+function closeAIWorkoutModal() {
+  document.getElementById('ai-workout-modal').style.display = 'none';
+  document.getElementById('ai-workout-form').reset();
+}
+
+async function generateAIWorkout(e) {
+  e.preventDefault();
+  
+  const submitBtn = document.getElementById('btn-submit-workout-ai');
+  const prevText = submitBtn.textContent;
+  
+  const apiKey = localStorage.getItem('fittrack_gemini_api_key');
+  if (!apiKey) {
+    alert('Silakan masukkan Google Gemini API Key Anda terlebih dahulu di Tab Profil (Pengaturan).');
+    return;
+  }
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Generating Program Latihan...';
+  
+  const skill = document.getElementById('ai-workout-skill').value;
+  const level = document.getElementById('ai-workout-level').value;
+  const limitation = document.getElementById('ai-workout-limitation').value || 'Tidak ada';
+  const profile = appState.profile;
+
+  const prompt = `Anda adalah AI Personal Trainer Ahli Calisthenics dan Lari. Buat program latihan mingguan (split 7 hari) yang dipersonalisasi.
+Detail Pengguna:
+- Jenis Kelamin: ${profile.gender === 'male' ? 'Pria' : 'Wanita'}
+- Umur: ${profile.age || 25} Tahun
+- Berat Badan: ${profile.weight || 70} kg
+- Tinggi Badan: ${profile.height || 170} cm
+- Aktivitas Harian: TDEE multiplier ${profile.activityFactor || 1.375}
+- Gerakan Target Utama: ${skill}
+- Tingkat Keahlian: ${level}
+- Batasan Fisik/Cedera: ${limitation}
+
+Instruksi:
+1. Program harus memiliki 7 hari (Day 1 hingga Day 7).
+2. Sediakan 1 atau 2 hari istirahat/recovery aktif (REST & RECOVERY).
+3. Untuk hari aktif, sediakan 2-4 gerakan latihan beban kalistenik progresif atau lari yang relevan dengan gerakan target utama (${skill}) dan tingkat keahlian (${level}).
+4. Pastikan latihan lari menggunakan kata "Lari", "Run", atau "Sprint" di nama latihan agar dapat dideteksi oleh sistem pelacakan lari.
+5. Kembalikan respons dalam format JSON valid yang murni tanpa bungkus markdown seperti \`\`\`json. Pastikan format JSON persis seperti berikut:
+{
+  "1": {
+    "title": "Nama Sesi Latihan Hari 1",
+    "desc": "Deskripsi singkat fokus latihan Hari 1",
+    "exercises": [
+      {
+        "name": "Nama Latihan 1",
+        "target": "4 Set x 8-12 Reps (atau 4 Set x Max Detik)",
+        "note": "Catatan singkat teknik eksekusi"
+      }
+    ]
+  },
+  ...
+  "7": {
+    "title": "REST & RECOVERY",
+    "desc": "Hari pemulihan otot",
+    "exercises": []
+  }
+}
+Pastikan data adalah JSON valid dan terstruktur rapi.`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ]
+      })
+    });
+
+    const data = await response.json();
+    submitBtn.disabled = false;
+    submitBtn.textContent = prevText;
+
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+      let rawText = data.candidates[0].content.parts[0].text.trim();
+      if (rawText.startsWith('```json')) {
+        rawText = rawText.slice(7);
+      }
+      if (rawText.endsWith('```')) {
+        rawText = rawText.slice(0, -3);
+      }
+      rawText = rawText.trim();
+
+      const parsedPlan = JSON.parse(rawText);
+      
+      localStorage.setItem('fittrack_custom_workout_split', JSON.stringify(parsedPlan));
+      
+      WORKOUT_SPLIT = parsedPlan;
+      
+      updateCalendarLabels();
+      renderWorkoutDay(appState.activeWorkoutDay);
+      
+      alert('Program Latihan Mingguan baru berhasil di-generate menggunakan Gemini AI!');
+      closeAIWorkoutModal();
+    } else {
+      throw new Error('Invalid Gemini API response');
+    }
+  } catch (error) {
+    console.error('AI Workout Generation error:', error);
+    submitBtn.disabled = false;
+    submitBtn.textContent = prevText;
+    alert('Gagal membuat program latihan dengan AI. Pastikan API Key Anda valid dan format JSON keluaran sesuai.');
+  }
+}
+
+// --- AI COACH CHAT ACTIONS ---
+async function sendAICoachMessage() {
+  const inputEl = document.getElementById('ai-chat-input');
+  const messageText = inputEl.value.trim();
+  if (!messageText) return;
+
+  inputEl.value = '';
+
+  const chatHistory = document.getElementById('ai-chat-history');
+
+  const userBubble = document.createElement('div');
+  userBubble.className = 'chat-bubble user-msg';
+  userBubble.style.cssText = 'align-self: flex-end; max-width: 85%; padding: 0.6rem 0.85rem; border-radius: 12px 12px 0 12px; background-color: var(--color-accent); color: #11111b; font-size: 0.85rem; line-height: 1.4; word-break: break-word;';
+  userBubble.textContent = messageText;
+  chatHistory.appendChild(userBubble);
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+
+  const apiKey = localStorage.getItem('fittrack_gemini_api_key');
+  if (!apiKey) {
+    const errorBubble = document.createElement('div');
+    errorBubble.className = 'chat-bubble bot-msg';
+    errorBubble.style.cssText = 'align-self: flex-start; max-width: 85%; padding: 0.6rem 0.85rem; border-radius: 12px 12px 12px 0; background-color: var(--bg-tertiary); color: var(--color-danger); font-size: 0.85rem; line-height: 1.4; border: 1px solid var(--card-border);';
+    errorBubble.textContent = 'Silakan masukkan Google Gemini API Key Anda terlebih dahulu di Tab Profil (Pengaturan) untuk menggunakan Coach AI.';
+    chatHistory.appendChild(errorBubble);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+    return;
+  }
+
+  const typingBubble = document.createElement('div');
+  typingBubble.className = 'chat-bubble bot-msg typing-msg';
+  typingBubble.style.cssText = 'align-self: flex-start; max-width: 85%; padding: 0.6rem 0.85rem; border-radius: 12px 12px 12px 0; background-color: var(--bg-tertiary); color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; border: 1px solid var(--card-border);';
+  typingBubble.textContent = 'Coach sedang berpikir...';
+  chatHistory.appendChild(typingBubble);
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+
+  const profile = appState.profile;
+  const systemPrompt = `Anda adalah Coach AI FitTrack, seorang pelatih kebugaran calisthenics dan nutrisi diet profesional.
+Berikan jawaban yang ramah, ringkas, dan praktis berbasis sains.
+Profil Pengguna:
+- Jenis Kelamin: ${profile.gender === 'male' ? 'Pria' : profile.gender === 'female' ? 'Wanita' : 'Belum diatur'}
+- Umur: ${profile.age || 'Belum diatur'} Tahun
+- Berat Badan: ${profile.weight || 'Belum diatur'} kg
+- Tinggi Badan: ${profile.height || 'Belum diatur'} cm
+- Target Harian: ${profile.targetCalories || 'Belum'} kcal & ${profile.targetProtein || 'Belum'}g Protein.
+
+Jawab pertanyaan dengan batasan maksimal 2-3 paragraf agar nyaman dibaca di mobile. Berikan resep makanan tinggi protein atau tips gerakan jika ditanyakan.`;
+
+  const contents = [
+    {
+      role: 'user',
+      parts: [{ text: `${systemPrompt}\n\nPertanyaan Pengguna: ${messageText}` }]
+    }
+  ];
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ contents })
+    });
+
+    const data = await response.json();
+    chatHistory.removeChild(typingBubble);
+
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+      let replyText = data.candidates[0].content.parts[0].text.trim();
+      
+      const replyBubble = document.createElement('div');
+      replyBubble.className = 'chat-bubble bot-msg';
+      replyBubble.style.cssText = 'align-self: flex-start; max-width: 85%; padding: 0.6rem 0.85rem; border-radius: 12px 12px 12px 0; background-color: var(--bg-tertiary); color: var(--text-primary); font-size: 0.85rem; line-height: 1.4; border: 1px solid var(--card-border); white-space: pre-wrap;';
+      replyBubble.textContent = replyText;
+      chatHistory.appendChild(replyBubble);
+    } else {
+      throw new Error('Invalid response content');
+    }
+  } catch (error) {
+    console.error('Error fetching Coach AI response:', error);
+    chatHistory.removeChild(typingBubble);
+    
+    const errorBubble = document.createElement('div');
+    errorBubble.className = 'chat-bubble bot-msg';
+    errorBubble.style.cssText = 'align-self: flex-start; max-width: 85%; padding: 0.6rem 0.85rem; border-radius: 12px 12px 12px 0; background-color: var(--bg-tertiary); color: var(--color-danger); font-size: 0.85rem; line-height: 1.4; border: 1px solid var(--card-border);';
+    errorBubble.textContent = 'Gagal memanggil Coach AI. Periksa koneksi internet Anda.';
+    chatHistory.appendChild(errorBubble);
+  }
+
+  chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+// --- AI EVALUATOR & PROGRESS INSIGHTS ---
+function openAIInsightsModal() {
+  document.getElementById('ai-insights-modal').style.display = 'flex';
+}
+
+function closeAIInsightsModal() {
+  document.getElementById('ai-insights-modal').style.display = 'none';
+}
+
+async function generateAIProgressInsights() {
+  const apiKey = localStorage.getItem('fittrack_gemini_api_key');
+  if (!apiKey) {
+    alert('Silakan masukkan Google Gemini API Key Anda terlebih dahulu di Tab Profil (Pengaturan).');
+    return;
+  }
+
+  const btn = document.getElementById('btn-analyze-progress-ai');
+  const prevText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Mengevaluasi...';
+
+  const profile = appState.profile;
+  const foodLogs = appState.foodLogs;
+  const workoutLogs = appState.workoutLogs;
+
+  let logsText = `Data Log Pengguna:\n`;
+  logsText += `- Target Harian: ${profile.targetCalories} kcal, ${profile.targetProtein} g Protein\n`;
+  
+  if (foodLogs.length === 0) {
+    logsText += `- Log makanan: Belum ada data makanan yang dicatat.\n`;
+  } else {
+    logsText += `- Log Makanan (10 entri terakhir):\n`;
+    foodLogs.slice(-10).forEach(log => {
+      logsText += `  * ${log.date}: ${log.name}, ${log.portion}g (${log.calories} kcal, P: ${log.protein}g, C: ${log.carbs}g, F: ${log.fat}g)\n`;
+    });
+  }
+
+  if (workoutLogs.length === 0) {
+    logsText += `- Log latihan: Belum ada data latihan yang dicatat.\n`;
+  } else {
+    logsText += `- Log Latihan (10 sesi terakhir):\n`;
+    workoutLogs.slice(-10).forEach(log => {
+      const keys = Object.keys(log.exercises).filter(k => k !== 'recoveryNotes' && k !== 'hiitStatus' && k !== 'recoveryRunDone');
+      logsText += `  * Hari ${log.dayIndex} (${log.date}): Selesai melakukan ${keys.join(', ')}. `;
+      if (log.exercises.runDistance) {
+        logsText += `Lari ${log.exercises.runDistance} KM. `;
+      }
+      logsText += `\n`;
+    });
+  }
+
+  const prompt = `Anda adalah AI Analis Kebugaran Profesional. Analisis data progres latihan harian, asupan kalori, dan protein pengguna berikut, lalu berikan laporan evaluasi ringkas dan rekomendasi progresif.
+
+Detail Pengguna:
+- Tinggi/Berat: ${profile.height || 170} cm / ${profile.weight || 70} kg
+- Umur/Gender: ${profile.age || 25} Tahun / ${profile.gender === 'male' ? 'Pria' : 'Wanita'}
+- Target Kalori/Protein: ${profile.targetCalories || 1800} kcal / ${profile.targetProtein || 140} gram
+
+${logsText}
+
+Tugas Anda:
+1. Evaluasi konsistensi asupan kalori & protein harian pengguna dibanding target mereka.
+2. Evaluasi progres latihan dan konsistensi jadwal mingguan mereka.
+3. Berikan 3 poin rekomendasi langkah selanjutnya yang taktis untuk membantu mereka mencapai target body recomposition.
+
+Kembalikan jawaban dalam bentuk format HTML ringkas (gunakan tag seperti <h3>, <p>, <ul>, <li>) yang ramah dibaca di modal popup mobile. Jangan gunakan markdown. Berikan bahasa yang memotivasi dan ramah.`;
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ]
+      })
+    });
+
+    const data = await response.json();
+    btn.disabled = false;
+    btn.textContent = prevText;
+
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+      let replyHtml = data.candidates[0].content.parts[0].text.trim();
+      replyHtml = replyHtml.replace(/```html/gi, '').replace(/```/g, '').trim();
+
+      document.getElementById('ai-insights-content').innerHTML = replyHtml;
+      openAIInsightsModal();
+    } else {
+      throw new Error('Invalid response structure');
+    }
+  } catch (error) {
+    console.error('AI Insights error:', error);
+    btn.disabled = false;
+    btn.textContent = prevText;
+    alert('Gagal menghasilkan analisis progres dengan AI. Silakan coba kembali.');
+  }
 }
