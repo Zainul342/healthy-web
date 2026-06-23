@@ -436,8 +436,8 @@ function switchTab(tabId) {
       updateDashboardUI();
       break;
     case 'nutrition':
-      title.textContent = 'Nutrisi & AI Tracker';
-      subtitle.textContent = 'Foto makanan Anda untuk menghitung kalori instan';
+      title.textContent = 'Nutrisi & Tracker';
+      subtitle.textContent = 'Pindai foto makanan Anda untuk menghitung kalori instan';
       updateNutritionUI();
       break;
     case 'workout':
@@ -1161,7 +1161,6 @@ function showAIScanResults(foodName, data, imgUrl) {
       boxEl.style.width = box.width;
       boxEl.style.height = box.height;
       boxEl.style.borderColor = box.color || 'var(--color-accent)';
-      boxEl.style.boxShadow = `0 0 10px ${box.color || 'var(--color-accent)'}`;
       
       const labelEl = document.createElement('span');
       labelEl.className = 'bounding-box-label';
