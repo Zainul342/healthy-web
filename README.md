@@ -128,6 +128,9 @@ Aplikasi dikoordinasikan melalui beberapa fungsi utama di dalam `app.js`:
 ### D. Integrasi Visualisasi Grafik (Chart.js)
 - `renderAnalyticsCharts()`: Mengambil log dari `foodLogs` dan `workoutLogs` untuk memvisualisasikan tren mingguan/bulanan, menggunakan gradien warna neon (Mauve, Lavender, dll.) yang disesuaikan secara visual agar kontras dengan latar belakang gelap.
 
+### E. Integrasi Gemini AI Vision
+- `performRealGeminiScan(imgSrc, apiKey)`: Membaca base64 data URL gambar yang diunggah, mengirimkannya ke endpoint resmi Google Gemini API (`gemini-1.5-flash`), dan memproses hasil analisis JSON yang dikembalikan. Fungsi ini mendeteksi bounding boxes dalam koordinat `[ymin, xmin, ymax, xmax]` ter-normalisasi (0-1000) dan mengonversinya menjadi persentase gaya CSS (`top`, `left`, `width`, `height`) secara presisi untuk digambar sebagai kotak deteksi di atas gambar.
+
 ---
 
 ## 5. Pengembangan & Penggunaan Lokal

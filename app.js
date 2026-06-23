@@ -518,15 +518,58 @@ function setupEventListeners() {
   const btnScanUploaded = document.getElementById('btn-scan-uploaded');
   if (btnScanUploaded) {
     btnScanUploaded.addEventListener('click', () => {
+      const savedKey = localStorage.getItem('fittrack_gemini_api_key');
       if (appState.uploadedImageSrc) {
-        simulateAIScan(appState.uploadedImageSrc, 'Makanan Campur Sehat', {
-          portion: 300,
-          calories: 520,
-          protein: 28,
-          carbs: 65,
-          fat: 12
-        });
+        if (savedKey) {
+          performRealGeminiScan(appState.uploadedImageSrc, savedKey);
+        } else {
+          // Show simulated scan, but alert user that it is simulated
+          alert('Menggunakan Mode Simulasi. Untuk analisis foto asli secara live, masukkan Google Gemini API Key Anda di Tab Profil (Pengaturan).');
+          simulateAIScan(appState.uploadedImageSrc, 'Makanan Campur Sehat (Simulasi)', {
+            portion: 300,
+            calories: 520,
+            protein: 28,
+            carbs: 65,
+            fat: 12,
+            boundingBoxes: [
+              { label: 'Sayuran Hijau', top: '10%', left: '15%', width: '40%', height: '35%', color: 'var(--color-cal)' },
+              { label: 'Dada Ayam', top: '25%', left: '50%', width: '35%', height: '40%', color: 'var(--color-accent)' },
+              { label: 'Nasi Merah', top: '55%', left: '20%', width: '45%', height: '35%', color: 'var(--color-carbs)' }
+            ]
+          });
+        }
       }
+    });
+  }
+
+  // Save Gemini API Key Button
+  const btnSaveApiKey = document.getElementById('btn-save-api-key');
+  const apiKeyInput = document.getElementById('gemini-api-key-input');
+  const apiKeyFeedback = document.getElementById('api-key-feedback');
+  if (btnSaveApiKey && apiKeyInput) {
+    // Load key immediately
+    const savedKey = localStorage.getItem('fittrack_gemini_api_key');
+    if (savedKey) {
+      apiKeyInput.value = savedKey;
+    }
+    btnSaveApiKey.addEventListener('click', () => {
+      const keyVal = apiKeyInput.value.trim();
+      if (keyVal) {
+        localStorage.setItem('fittrack_gemini_api_key', keyVal);
+        if (apiKeyFeedback) {
+          apiKeyFeedback.textContent = 'Kunci API berhasil disimpan!';
+          apiKeyFeedback.style.color = 'var(--color-success)';
+        }
+      } else {
+        localStorage.removeItem('fittrack_gemini_api_key');
+        if (apiKeyFeedback) {
+          apiKeyFeedback.textContent = 'Kunci API dihapus.';
+          apiKeyFeedback.style.color = 'var(--color-danger)';
+        }
+      }
+      setTimeout(() => {
+        if (apiKeyFeedback) apiKeyFeedback.textContent = '';
+      }, 3000);
     });
   }
 
@@ -641,6 +684,13 @@ function populateSettingsForm() {
     document.getElementById('calc-tdee').textContent = `0 kcal`;
     document.getElementById('calc-target-cal').textContent = `0 kcal`;
     document.getElementById('calc-target-prot').textContent = `0 gram`;
+  }
+
+  // Load API Key to inputs
+  const savedKey = localStorage.getItem('fittrack_gemini_api_key');
+  const apiKeyInput = document.getElementById('gemini-api-key-input');
+  if (savedKey && apiKeyInput) {
+    apiKeyInput.value = savedKey;
   }
 }
 
@@ -948,6 +998,134 @@ function simulateAIScan(imgUrl, foodName, macrosObj) {
     scannerOverlay.style.display = 'none';
     showAIScanResults(foodName, macrosObj, imgUrl);
   }, 2500);
+}
+
+function performRealGeminiScan(imgSrc, apiKey) {
+  const scannerOverlay = document.getElementById('scanner-animation-container');
+  const scanningImg = document.getElementById('scanning-img-src');
+  
+  // Set image inside scanner
+  scanningImg.src = imgSrc;
+  scannerOverlay.style.display = 'flex';
+  
+  // Parse base64 parts
+  const mimeType = imgSrc.match(/data:([^;]+);base64,/)[1];
+  const base64Data = imgSrc.split(',')[1];
+  
+  const payload = {
+    contents: [
+      {
+        parts: [
+          {
+            text: `Anda adalah AI Ahli Nutrisi dan Dietisien Profesional. Analisis gambar makanan yang diunggah oleh pengguna ini.
+Tugas Anda:
+1. Identifikasi nama makanan utama (misal: "Nasi Goreng + Telur Ceplok").
+2. Estimasikan berat porsi total dalam gram (misal: 250).
+3. Estimasikan nilai makronutrien: Kalori total (kcal), Protein (g), Karbohidrat (g), dan Lemak (g).
+4. Identifikasi 1 hingga 4 komponen makanan utama dalam gambar dan tentukan koordinat kotak pembatas (bounding box) mereka. Koordinat harus dinormalisasi dari 0 hingga 1000 dalam format [ymin, xmin, ymax, xmax], di mana (0,0) adalah sudut kiri atas gambar.
+
+Kembalikan jawaban dalam format JSON yang valid dengan struktur berikut:
+{
+  "name": "Nama Makanan",
+  "portion": berat_dalam_gram_sebagai_angka,
+  "calories": kalori_sebagai_angka,
+  "protein": protein_sebagai_angka,
+  "carbs": karbohidrat_sebagai_angka,
+  "fat": lemak_sebagai_angka,
+  "boundingBoxes": [
+    {
+      "label": "Nama Komponen",
+      "ymin": ymin_0_hingga_1000,
+      "xmin": xmin_0_hingga_1000,
+      "ymax": ymax_0_hingga_1000,
+      "xmax": xmax_0_hingga_1000
+    }
+  ]
+}
+Jangan sertakan markdown wrapper seperti \`\`\`json atau \`\`\` di sekitar output Anda. Pastikan itu adalah JSON murni yang valid.`
+          },
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data
+            }
+          }
+        ]
+      }
+    ],
+    generationConfig: {
+      responseMimeType: "application/json"
+    }
+  };
+  
+  fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  })
+  .then(data => {
+    scannerOverlay.style.display = 'none';
+    
+    // Extract JSON response text
+    if (data.candidates && data.candidates[0].content.parts[0].text) {
+      const responseText = data.candidates[0].content.parts[0].text.trim();
+      
+      try {
+        const parsed = JSON.parse(responseText);
+        
+        // Translate ymin, xmin, ymax, xmax coordinates to CSS top, left, width, height percentages
+        const colors = ['#cba6f7', '#89b4fa', '#a6e3a1', '#f9e2af', '#f5c2e7'];
+        let boxIdx = 0;
+        
+        const mappedBoxes = (parsed.boundingBoxes || []).map(box => {
+          const top = (box.ymin / 10).toFixed(1) + '%';
+          const left = (box.xmin / 10).toFixed(1) + '%';
+          const width = ((box.xmax - box.xmin) / 10).toFixed(1) + '%';
+          const height = ((box.ymax - box.ymin) / 10).toFixed(1) + '%';
+          const color = colors[boxIdx % colors.length];
+          boxIdx++;
+          
+          return {
+            label: box.label,
+            top,
+            left,
+            width,
+            height,
+            color
+          };
+        });
+        
+        const macros = {
+          portion: parsed.portion || 250,
+          calories: parsed.calories || 0,
+          protein: parsed.protein || 0,
+          carbs: parsed.carbs || 0,
+          fat: parsed.fat || 0,
+          boundingBoxes: mappedBoxes
+        };
+        
+        showAIScanResults(parsed.name || 'Hasil Deteksi Gemini AI', macros, imgSrc);
+      } catch (err) {
+        console.error('Failed to parse Gemini JSON output:', err, responseText);
+        alert('Gagal memproses respons format JSON dari Gemini AI. Silakan coba kembali.');
+      }
+    } else {
+      throw new Error('Invalid structure in Gemini response');
+    }
+  })
+  .catch(err => {
+    scannerOverlay.style.display = 'none';
+    console.error('Gemini API Error:', err);
+    alert('Terjadi kesalahan saat memanggil Gemini API. Pastikan kunci API Anda aktif, benar, dan terhubung ke internet.');
+  });
 }
 
 function showAIScanResults(foodName, data, imgUrl) {
