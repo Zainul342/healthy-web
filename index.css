@@ -78,12 +78,17 @@
   border-radius: 20px;
 }
 
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-family-body);
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
-  overflow-x: hidden;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -127,6 +132,8 @@ h1, h2, h3, h4, h5, h6 {
   min-height: 100vh;
   position: relative;
   overflow-x: hidden; /* Fix horizontal scaling overflow bug */
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Sidebar Navigation */
@@ -156,7 +163,7 @@ h1, h2, h3, h4, h5, h6 {
   width: 32px;
   height: 32px;
   color: var(--color-accent);
-  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.4));
+  filter: drop-shadow(0 0 8px rgba(148, 226, 213, 0.25));
 }
 
 .brand-name {
@@ -246,6 +253,7 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   gap: 1.5rem;
   padding-bottom: 100px; /* Space for bottom nav on mobile */
+  min-width: 0; /* Prevents layout overflow inside flex parent */
 }
 
 /* Top Bar Header */
@@ -256,6 +264,12 @@ h1, h2, h3, h4, h5, h6 {
   height: 60px;
   border-bottom: 1px solid var(--card-border);
   padding-bottom: 1rem;
+}
+
+.header-right {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
 }
 
 #page-title {
@@ -296,6 +310,7 @@ h1, h2, h3, h4, h5, h6 {
   transition: var(--transition-smooth);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  min-width: 0; /* Prevents overflow inside flex and grid items */
 }
 
 .card:hover {
@@ -305,17 +320,17 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .calorie-progress-card:hover {
-  box-shadow: var(--shadow-premium), var(--glow-green);
+  box-shadow: var(--shadow-premium);
   border-color: rgba(166, 227, 161, 0.25);
 }
 
 .macros-card:hover {
-  box-shadow: var(--shadow-premium), var(--glow-blue);
+  box-shadow: var(--shadow-premium);
   border-color: rgba(137, 180, 250, 0.25);
 }
 
 .today-workout-card:hover {
-  box-shadow: var(--shadow-premium), var(--glow-mauve);
+  box-shadow: var(--shadow-premium);
   border-color: rgba(203, 166, 247, 0.25);
 }
 
@@ -697,7 +712,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .btn-primary:hover {
   background-color: var(--color-accent-hover);
-  box-shadow: 0 0 12px rgba(203, 166, 247, 0.4);
+  box-shadow: none;
 }
 
 .btn-secondary {
@@ -716,7 +731,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 .btn-danger:hover {
   background-color: #f38ba8;
-  box-shadow: 0 0 8px rgba(243, 139, 168, 0.4);
+  box-shadow: none;
 }
 
 .btn-subtle {
@@ -902,8 +917,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .sim-mode-btn.active {
   background-color: var(--color-accent);
-  color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  color: #11111b;
+  box-shadow: none;
 }
 
 .sim-view {
@@ -1616,6 +1631,7 @@ h1, h2, h3, h4, h5, h6 {
     margin-left: 0;
     padding: 0.75rem; /* Reduced from 1.25rem for more screen area */
     padding-bottom: 100px; /* Offset for floating mobile navigation bar */
+    min-width: 0; /* Prevents overflow */
   }
   .card {
     padding: 1.25rem 0.85rem; /* Reduced margins inside cards on mobile */
@@ -1638,6 +1654,10 @@ h1, h2, h3, h4, h5, h6 {
   }
   .bottom-nav {
     display: flex !important;
+  }
+  .stats-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
 
@@ -1922,9 +1942,9 @@ h1, h2, h3, h4, h5, h6 {
 .badge-item.unlocked {
   filter: grayscale(0);
   opacity: 1;
-  border-color: rgba(203, 166, 247, 0.35); /* Mauve */
-  box-shadow: var(--shadow-premium), 0 0 12px rgba(203, 166, 247, 0.12);
-  background: linear-gradient(135deg, rgba(203, 166, 247, 0.04) 0%, var(--bg-secondary) 100%);
+  border-color: rgba(148, 226, 213, 0.35); /* Teal */
+  box-shadow: var(--shadow-premium);
+  background: linear-gradient(135deg, rgba(148, 226, 213, 0.04) 0%, var(--bg-secondary) 100%);
 }
 
 .badge-item:hover {
