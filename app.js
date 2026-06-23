@@ -573,6 +573,62 @@ function setupEventListeners() {
     });
   }
 
+  // Camera Event Listeners
+  const btnStartCamera = document.getElementById('btn-start-camera');
+  if (btnStartCamera) {
+    btnStartCamera.addEventListener('click', () => {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => {
+          window.cameraStreamInstance = stream;
+          const video = document.getElementById('camera-stream');
+          if (video) {
+            video.srcObject = stream;
+            video.style.display = 'block';
+          }
+          const placeholder = document.getElementById('camera-placeholder');
+          if (placeholder) placeholder.style.display = 'none';
+          const shutter = document.getElementById('btn-capture-photo');
+          if (shutter) shutter.style.display = 'flex';
+        })
+        .catch(err => {
+          console.error('Camera access error:', err);
+          alert('Gagal mengakses kamera. Pastikan Anda memberikan izin akses kamera.');
+        });
+    });
+  }
+
+  const btnCapturePhoto = document.getElementById('btn-capture-photo');
+  if (btnCapturePhoto) {
+    btnCapturePhoto.addEventListener('click', () => {
+      const video = document.getElementById('camera-stream');
+      const canvas = document.getElementById('camera-canvas');
+      if (video && canvas) {
+        const ctx = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const photoData = canvas.toDataURL('image/jpeg');
+        appState.uploadedImageSrc = photoData;
+        
+        // Stop camera stream immediately
+        stopCameraStream();
+        
+        // Switch view to upload tab to show the captured preview image
+        setSimMode('upload');
+        document.getElementById('upload-dropzone').style.display = 'none';
+        const previewContainer = document.getElementById('uploaded-preview-container');
+        if (previewContainer) {
+          previewContainer.style.display = 'flex';
+        }
+        const previewImg = document.getElementById('uploaded-preview-img');
+        if (previewImg) {
+          previewImg.src = photoData;
+        }
+      }
+    });
+  }
+
   // Save Food Log button from results card
   const btnSaveFoodLog = document.getElementById('btn-save-food-log');
   if (btnSaveFoodLog) {
@@ -947,13 +1003,27 @@ function setSimMode(mode) {
   document.querySelectorAll('.sim-mode-btn').forEach(btn => btn.classList.remove('active'));
   document.getElementById('sim-presets-view').classList.remove('active');
   document.getElementById('sim-upload-view').classList.remove('active');
+  
+  const simCameraView = document.getElementById('sim-camera-view');
+  if (simCameraView) simCameraView.classList.remove('active');
+
+  // Stop camera when switching tabs
+  if (mode !== 'camera') {
+    stopCameraStream();
+  }
 
   if (mode === 'presets') {
-    document.querySelector('.sim-mode-btn[onclick="setSimMode(\'presets\')"]').classList.add('active');
+    const btn = document.querySelector('.sim-mode-btn[onclick="setSimMode(\'presets\')"]');
+    if (btn) btn.classList.add('active');
     document.getElementById('sim-presets-view').classList.add('active');
-  } else {
-    document.querySelector('.sim-mode-btn[onclick="setSimMode(\'upload\')"]').classList.add('active');
+  } else if (mode === 'upload') {
+    const btn = document.querySelector('.sim-mode-btn[onclick="setSimMode(\'upload\')"]');
+    if (btn) btn.classList.add('active');
     document.getElementById('sim-upload-view').classList.add('active');
+  } else if (mode === 'camera') {
+    const btn = document.getElementById('btn-mode-camera');
+    if (btn) btn.classList.add('active');
+    if (simCameraView) simCameraView.classList.add('active');
   }
   resetAIScanner();
 }
@@ -1126,6 +1196,22 @@ Jangan sertakan markdown wrapper seperti \`\`\`json atau \`\`\` di sekitar outpu
     console.error('Gemini API Error:', err);
     alert('Terjadi kesalahan saat memanggil Gemini API. Pastikan kunci API Anda aktif, benar, dan terhubung ke internet.');
   });
+}
+
+function stopCameraStream() {
+  if (window.cameraStreamInstance) {
+    window.cameraStreamInstance.getTracks().forEach(track => track.stop());
+    window.cameraStreamInstance = null;
+  }
+  const video = document.getElementById('camera-stream');
+  if (video) {
+    video.srcObject = null;
+    video.style.display = 'none';
+  }
+  const shutter = document.getElementById('btn-capture-photo');
+  if (shutter) shutter.style.display = 'none';
+  const placeholder = document.getElementById('camera-placeholder');
+  if (placeholder) placeholder.style.display = 'flex';
 }
 
 function showAIScanResults(foodName, data, imgUrl) {

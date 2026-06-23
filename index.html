@@ -253,9 +253,10 @@
             </div>
             
             <!-- Tab Options for Simulator -->
-            <div class="simulator-modes">
-              <button class="sim-mode-btn active" onclick="setSimMode('presets')">Pilih Foto Galeri</button>
-              <button class="sim-mode-btn" onclick="setSimMode('upload')">Unggah Foto Sendiri</button>
+            <div class="simulator-modes" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+              <button class="sim-mode-btn active" style="flex: 1;" onclick="setSimMode('presets')">Galeri Contoh</button>
+              <button class="sim-mode-btn" style="flex: 1;" onclick="setSimMode('upload')">Unggah Foto</button>
+              <button class="sim-mode-btn" style="flex: 1;" id="btn-mode-camera" onclick="setSimMode('camera')">Kamera</button>
             </div>
 
             <!-- Presets Mode -->
@@ -300,6 +301,24 @@
                 </div>
                 <button class="btn btn-primary mt-2 w-100" id="btn-scan-uploaded">Analisis Foto</button>
               </div>
+            </div>
+
+            <!-- Camera Mode -->
+            <div id="sim-camera-view" class="sim-view">
+              <div class="camera-container" style="position: relative; width: 100%; height: 260px; background-color: #11111b; border-radius: var(--border-radius-md); overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--card-border);">
+                <!-- Video stream -->
+                <video id="camera-stream" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover; display: none;"></video>
+                <!-- Camera placeholder before start -->
+                <div id="camera-placeholder" style="display: flex; flex-direction: column; align-items: center; gap: 0.75rem; color: var(--text-secondary);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 48px; height: 48px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                  <button class="btn btn-primary btn-sm" id="btn-start-camera" style="width: auto; padding: 0.5rem 1.25rem;">Aktifkan Kamera</button>
+                </div>
+                <!-- Shutter button overlay (visible when camera is active) -->
+                <button class="btn btn-primary" id="btn-capture-photo" style="display: none; position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); border-radius: 50%; width: 56px; height: 56px; padding: 0; align-items: center; justify-content: center; border: 3px solid #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 20;">
+                  <div style="width: 24px; height: 24px; border-radius: 50%; background-color: #ffffff;"></div>
+                </button>
+              </div>
+              <canvas id="camera-canvas" style="display: none;"></canvas>
             </div>
 
             <!-- Scanning overlay animation container -->
