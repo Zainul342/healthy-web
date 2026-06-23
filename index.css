@@ -126,6 +126,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   min-height: 100vh;
   position: relative;
+  overflow-x: hidden; /* Fix horizontal scaling overflow bug */
 }
 
 /* Sidebar Navigation */
@@ -1506,10 +1507,16 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: 1fr;
   }
   .chart-canvas-wrapper {
-    height: 200px;
+    height: 220px;
   }
   .form-row-2, .recomp-metrics {
     grid-template-columns: 1fr;
+  }
+  .modal-overlay {
+    padding: 0.5rem;
+  }
+  .modal-container {
+    padding: 1.25rem 0.85rem;
   }
 }
 
@@ -1625,6 +1632,9 @@ h1, h2, h3, h4, h5, h6 {
   }
   .header-right {
     width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem !important;
   }
   .bottom-nav {
     display: flex !important;
